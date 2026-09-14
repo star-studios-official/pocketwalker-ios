@@ -125,6 +125,16 @@ SSD1854DrawInfo* PocketWalker::GetDrawInfo()
     return &this->ssd1854->draw_info;
 }
 
+uint8_t PocketWalker::ReadRam(uint16_t address) const
+{
+    return this->soc->memory->Read(address);
+}
+
+void PocketWalker::WriteRam(uint16_t address, uint8_t value) const
+{
+    this->soc->memory->Write(address, value);
+}
+
 void PocketWalker::PressButton(ButtonType button) const
 {
     const uint8_t current = soc->memory->Read8(SSU_ADDR_PDRB);

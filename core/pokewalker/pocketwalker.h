@@ -40,6 +40,9 @@ public:
     void SetSessionSteps(uint32_t value);
     void SetPause(bool value);
 
+    uint8_t ReadRam(uint16_t address) const;
+    void WriteRam(uint16_t address, uint8_t value) const;
+
     void OnSamplePushed(const EventHandlerCallback<BuzzerInformation>& callback);
 
     void OnTransmitIR(const EventHandlerCallback<uint8_t>& callback);
