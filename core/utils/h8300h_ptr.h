@@ -4,6 +4,23 @@
 #include <cstddef>
 #include <cstdint>
 
+// Portable byteswap: detail::byteswap is C++23, provide a shim for C++20 compilers
+namespace detail {
+    template <typename T>
+    requires std::integral<T>
+    inline constexpr T byteswap(T value) noexcept {
+        if constexpr (sizeof(T) == 1) {
+            return value;
+        } else if constexpr (sizeof(T) == 2) {
+            return static_cast<T>(__builtin_bswap16(static_cast<unsigned short>(value)));
+        } else if constexpr (sizeof(T) == 4) {
+            return static_cast<T>(__builtin_bswap32(static_cast<unsigned int>(value)));
+        } else if constexpr (sizeof(T) == 8) {
+            return static_cast<T>(__builtin_bswap64(static_cast<unsigned long long>(value)));
+        }
+    }
+}
+
 // provides an h8/300h big endian byte swap ptr for u16 and u32
 // holy moly this is ugly
 
@@ -15,7 +32,7 @@ public:
     {
         h8300h_ptr* p;
 
-        operator T() const { return std::byteswap(*p->ptr); }
+        operator T() const { return detail::byteswap(*p->ptr); }
 
         ref& operator=(T val)
         {
@@ -25,26 +42,26 @@ public:
 
         ref& operator++()
         {
-            *p = (T)(std::byteswap(*p->ptr) + 1);
+            *p = (T)(detail::byteswap(*p->ptr) + 1);
             return *this;
         }
 
         T operator++(int)
         {
-            T old = std::byteswap(*p->ptr);
+            T old = detail::byteswap(*p->ptr);
             ++*this;
             return old;
         }
 
         ref& operator--()
         {
-            *p = (T)(std::byteswap(*p->ptr) - 1);
+            *p = (T)(detail::byteswap(*p->ptr) - 1);
             return *this;
         }
 
         T operator--(int)
         {
-            T old = std::byteswap(*p->ptr);
+            T old = detail::byteswap(*p->ptr);
             --*this;
             return old;
         }
@@ -63,11 +80,11 @@ public:
     }
 
     ref operator*() { return ref{this}; }
-    T operator*() const { return std::byteswap(*ptr); }
+    T operator*() const { return detail::byteswap(*ptr); }
 
     h8300h_ptr& operator=(T val)
     {
-        *ptr = std::byteswap(val);
+        *ptr = detail::byteswap(val);
         return *this;
     }
 
