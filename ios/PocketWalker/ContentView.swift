@@ -240,7 +240,7 @@ struct LCDView: View {
                 
                 // Convert VRAM to pixels
                 // VRAM is organized as pages (8 rows each), each page has 128 columns * 2 bytes
-                let contrastFactor = CGFloat(max(1, contrast)) / 255.0
+                let _ = CGFloat(max(1, contrast)) / 255.0
                 
                 for page in 0..<22 {
                     for col in 0..<128 {
@@ -379,10 +379,11 @@ struct SaveManagementView: View {
             .fileImporter(
                 isPresented: $showingDocumentPicker,
                 allowedContentTypes: [.data],
-                allowsMultipleSelection: false
-            ) { result in
-                handleFileImport(result)
-            }
+                allowsMultipleSelection: false,
+                onCompletion: { result in
+                    handleFileImport(result)
+                }
+            )
         }
     }
     
@@ -483,16 +484,4 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Document Importer Extension
 
-extension View {
-    func fileImporter(isPresented: Binding<Bool>, allowedContentTypes: [UTType], allowsMultipleSelection: Bool, completion: @escaping (Result<[URL], Error>) -> Void) -> some View {
-        self.fileImporter(
-            isPresented: isPresented,
-            allowedContentTypes: allowedContentTypes,
-            allowsMultipleSelection: allowsMultipleSelection
-        ) { result in
-            completion(result)
-        }
-    }
-}

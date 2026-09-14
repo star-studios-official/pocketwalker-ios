@@ -1,10 +1,17 @@
 import Foundation
 
+// MARK: - Constants (macros from C header aren't available in Swift)
+
+private let PW_LCD_WIDTH: Int = 128
+private let PW_LCD_PAGES: Int = 22
+private let PW_LCD_MEM_SIZE: Int = PW_LCD_WIDTH * 2 * PW_LCD_PAGES
+private let PW_EEPROM_SIZE: Int = 0x10000
+
 // MARK: - Swift Wrapper
 
 /// Swift wrapper around the PocketWalker emulator
 class PocketWalkerCore {
-    private var emu: PWEmulator?
+    private var emu: OpaquePointer?
     private var audioCallback: PWAudioCallback?
 
     var isRunning = false
@@ -46,7 +53,7 @@ class PocketWalkerCore {
     /// Get LCD framebuffer as Data
     func getLCD() -> Data? {
         guard let emu = emu else { return nil }
-        var data = Data(count: Int(PW_LCD_MEM_SIZE))
+        var data = Data(count: PW_LCD_MEM_SIZE)
         data.withUnsafeMutableBytes { ptr in
             pw_get_lcd(emu, ptr.baseAddress?.assumingMemoryBound(to: UInt8.self))
         }
@@ -66,7 +73,7 @@ class PocketWalkerCore {
     /// Get EEPROM data
     func getEeprom() -> Data? {
         guard let emu = emu else { return nil }
-        var data = Data(count: Int(PW_EEPROM_SIZE))
+        var data = Data(count: PW_EEPROM_SIZE)
         data.withUnsafeMutableBytes { ptr in
             pw_get_eeprom(emu, ptr.baseAddress?.assumingMemoryBound(to: UInt8.self))
         }

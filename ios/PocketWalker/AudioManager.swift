@@ -71,7 +71,7 @@ class AudioManager {
     private func generateSamples(buffer: UnsafeMutableBufferPointer<Float>, count: Int) {
         let freq = currentFrequency
         guard freq > 0 && isPlaying else {
-            buffer.initialize(repeating: 0, count: count)
+            for i in 0..<count { buffer[i] = 0 }
             return
         }
         
@@ -118,8 +118,11 @@ extension AudioManager {
         audioBuffer.frameLength = frameCount
         
         data.withUnsafeBytes { ptr in
-            guard let floatPtr = ptr.baseAddress?.assumingMemoryBound(to: Float.self) else { return }
-            audioBuffer.floatChannelData?[0]?.update(from: floatPtr, count: Int(frameCount))
+            guard let floatPtr = ptr.baseAddress?.assumingMemoryBound(to: Float.self),
+                  let channelData = audioBuffer.floatChannelData else { return }
+            for i in 0..<Int(frameCount) {
+                channelData[0][i] = floatPtr[i]
+            }
         }
         
         playerNode.scheduleBuffer(audioBuffer)

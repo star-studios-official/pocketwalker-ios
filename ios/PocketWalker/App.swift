@@ -24,7 +24,7 @@ class AppState: ObservableObject {
     let fileManager = EmulatorFileManager()
     
     // Health integration
-    let healthManager = HealthManager()
+    var healthManager = HealthManager()
     
     // Audio
     let audioManager = AudioManager()
