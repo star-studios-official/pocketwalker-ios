@@ -92,6 +92,7 @@ set_target_properties(pocketwalker_ios_app PROPERTIES
     XCODE_ATTRIBUTE_INFOPLIST_KEY_UISupportedInterfaceOrientations "UIInterfaceOrientationPortrait"
     XCODE_ATTRIBUTE_INFOPLIST_KEY_UILaunchScreen_Generation YES
     XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/PocketWalker/PocketWalker.entitlements"
+    XCODE_ATTRIBUTE_SWIFT_OBJC_BRIDGING_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/PocketWalker/PocketWalker-Bridging-Header.h"
     XCODE_ATTRIBUTE_SWIFT_VERSION "5.0"
     XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
     XCODE_ATTRIBUTE_DEVELOPMENT_TEAM ""
