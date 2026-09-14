@@ -29,6 +29,11 @@ jobs:
           restore-keys: |
             ios-${{ matrix.variant }}-
 
+      - name: Generate app icon
+        run: |
+          cd ios
+          swift generate_icon.swift
+
       - name: Configure CMake
         run: |
           cd ios
