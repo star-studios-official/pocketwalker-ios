@@ -24,6 +24,9 @@ list(FILTER CORE_SOURCES EXCLUDE REGEX ".*desktop.*")
 
 add_library(pocketwalker_core STATIC ${CORE_SOURCES})
 target_include_directories(pocketwalker_core PUBLIC
+    # Repo root: core files use #include "core/memory/interface.h"
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    # Also allow direct includes from core/
     ${CMAKE_CURRENT_SOURCE_DIR}/../core
 )
 set_target_properties(pocketwalker_core PROPERTIES
