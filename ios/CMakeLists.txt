@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(PocketWalker LANGUAGES C CXX Swift)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Only build when targeting iOS
@@ -30,7 +30,7 @@ target_include_directories(pocketwalker_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../core
 )
 set_target_properties(pocketwalker_core PROPERTIES
-    CXX_STANDARD 17
+    CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
 )
 
@@ -52,7 +52,7 @@ target_link_libraries(pocketwalker_capi PUBLIC
 )
 
 set_target_properties(pocketwalker_capi PROPERTIES
-    CXX_STANDARD 17
+    CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
 )
 
