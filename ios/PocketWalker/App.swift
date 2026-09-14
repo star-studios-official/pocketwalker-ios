@@ -35,6 +35,9 @@ class AppState: ObservableObject {
     @AppStorage("fastMode") var fastMode = false
     
     init() {
+        // Set up file logging
+        setupFileLogging()
+        
         // Auto-load ROM if available
         if let romData = fileManager.loadROM() {
             loadEmulator(romData: romData)
@@ -44,6 +47,23 @@ class AppState: ObservableObject {
                 emu.setEeprom(saveData)
             }
         }
+    }
+    
+    private func setupFileLogging() {
+        guard let docsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        let logURL = docsURL.appendingPathComponent("pocketwalker.log")
+        
+        // Open log file and redirect stderr to it
+        let path = logURL.path
+        path.withCString { cPath in
+            if let file = fopen(cPath, "w") {
+                dup2(fileno(file), fileno(stderr))
+                fclose(file)
+            }
+        }
+        
+        print("[PocketWalker] Log file: \(logURL.path)")
+        print("[PocketWalker] Started at \(Date())")
     }
     
     func loadEmulator(romData: Data) {

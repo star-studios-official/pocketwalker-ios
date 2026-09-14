@@ -1,9 +1,12 @@
 #pragma once
 
+#include <cstdio>
 #include <cstdlib>
+#include <string>
 
-// std::println / std::format are C++23. Apple Clang doesn't have them yet.
-// Provide a portable logger using fprintf when <print> isn't available.
+// Portable logger: uses std::println when available, falls back to fprintf.
+// In release builds (NDEBUG defined), all logging is compiled out.
+
 #if __has_include(<print>) && defined(__cpp_lib_print) && __cpp_lib_print >= 202207L
 #include <print>
 #include <format>
@@ -44,18 +47,28 @@ public:
         std::abort();
     }
 };
+
 #else
-// Fallback: no-op logger for compilers without C++23 print/format
+
+// Fallback: fully no-op logger for compilers without C++23 print/format.
+// Uses empty variadic templates to avoid -Wnon-pod-varargs.
 class Log
 {
 public:
-    template <typename...>
-    static void Info(...) {}
-    template <typename...>
-    static void Warn(...) {}
-    template <typename...>
-    static void Error(...) {}
-    template <typename...>
-    static void Fatal(...) { std::abort(); }
+    // Accept any arguments and do nothing. The template pack prevents
+    // the compiler from trying to pass non-trivial types through
+    // variadic C functions.
+    template <typename... Args>
+    static void Info(Args&&...) {}
+
+    template <typename... Args>
+    static void Warn(Args&&...) {}
+
+    template <typename... Args>
+    static void Error(Args&&...) {}
+
+    template <typename... Args>
+    [[noreturn]] static void Fatal(Args&&...) { std::abort(); }
 };
+
 #endif
