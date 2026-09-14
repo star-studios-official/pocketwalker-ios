@@ -50,7 +50,7 @@ The `eeprom.bin` file can be edited using:
 ## Building
 
 ### Prerequisites
-- Xcode 15.0+
+- Xcode 15.0+ (for manual builds)
 - iOS 16.0+ deployment target
 - CMake 3.20+
 
@@ -61,27 +61,31 @@ The project includes a GitHub Actions workflow that builds the iOS app:
 1. Push your changes to GitHub
 2. Go to Actions → ios-build
 3. Click "Run workflow"
-4. Download the IPA artifact when the build completes
+4. Download the unsigned IPA artifact when the build completes
 
-### Manual Build
+To sign the IPA for device installation:
+1. Set `IOS_CERT_P12_BASE64` and `IOS_MOBILEPROVISION_BASE64` repo secrets
+2. Trigger the `sign-ipa` workflow manually
+
+### Manual Build (Local)
 
 ```bash
 # Clone the repository
 git clone --recursive https://github.com/h4lfheart/pocketwalker
 cd pocketwalker
 
-# Build the core library
+# Configure CMake with Xcode generator
 cd ios
-mkdir -p build-ios
-cmake -S . -B build-ios \
+cmake -S . -B build-ios -G Xcode \
   -DCMAKE_SYSTEM_NAME=iOS \
   -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
-  -DCMAKE_OSX_ARCHITECTURES="arm64"
+  -DCMAKE_OSX_ARCHITECTURES=arm64
 
+# Build (produces PocketWalker.app in build-ios/)
 cmake --build build-ios --config Release
 
-# Open in Xcode and build the app
-open PocketWalker.xcodeproj
+# Or open in Xcode
+open build-ios/PocketWalker.xcodeproj
 ```
 
 ## Architecture
