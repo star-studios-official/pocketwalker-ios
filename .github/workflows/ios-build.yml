@@ -31,7 +31,7 @@ jobs:
 
       - name: Configure CMake
         run: |
-          cd pocketwalker/ios
+          cd ios
           cmake -S . -B build-ios -G Xcode \
             -DCMAKE_SYSTEM_NAME=iOS \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
@@ -40,12 +40,12 @@ jobs:
 
       - name: Build
         run: |
-          cd pocketwalker/ios
+          cd ios
           cmake --build build-ios --config Release -j$(sysctl -n hw.ncpu)
 
       - name: Create unsigned IPA
         run: |
-          cd pocketwalker/ios
+          cd ios
 
           # Find the .app bundle (CMake MACOSX_BUNDLE produces it)
           APP_PATH=$(find build-ios -name "PocketWalker.app" -type d | head -1)
@@ -67,22 +67,6 @@ jobs:
 
           echo "Updated Info.plist:"
           plutil -p "$APP_PATH/Info.plist" | grep -E "(CFBundleIdentifier|CFBundleExecutable|CFBundleName)"
-
-          # Compile asset catalog to generate app icons
-          echo "Compiling asset catalog..."
-          xcrun actool PocketWalker/Assets.xcassets \
-            --compile "$APP_PATH" \
-            --platform iphoneos \
-            --minimum-deployment-target 16.0 \
-            --app-icon AppIcon \
-            --output-partial-info-plist /tmp/partial-info.plist \
-            --compress-pngs || true
-
-          if [ -f "$APP_PATH/Assets.car" ]; then
-            echo "Assets.car created successfully"
-          else
-            echo "Warning: Assets.car not found, continuing..."
-          fi
 
           # Copy entitlements into the bundle
           if [ -f "PocketWalker/PocketWalker.entitlements" ]; then
@@ -137,14 +121,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-${{ matrix.variant }}-ipa
-          path: pocketwalker/ios/PocketWalker.ipa
+          path: ios/PocketWalker.ipa
           retention-days: 30
 
       - name: Upload debug symbols
         uses: actions/upload-artifact@v4
         with:
           name: ios-${{ matrix.variant }}-dsyms
-          path: pocketwalker/ios/build-ios/**/*.dSYM
+          path: ios/build-ios/**/*.dSYM
           retention-days: 7
 
   # Manual job: sign the unsigned IPA with your certificate + provisioning profile
@@ -193,7 +177,7 @@ jobs:
         run: |
           mkdir -p Payload
           unzip -q unsigned/PocketWalker.ipa -d .
-          ldid -S"pocketwalker/ios/PocketWalker/PocketWalker.entitlements" \
+          ldid -S"ios/PocketWalker/PocketWalker.entitlements" \
                -I"com.pocketwalker.PocketWalker" \
                -K"key.pem" \
                -C"cert.pem" \
