@@ -1791,6 +1791,81 @@ InstructionSet::InstructionSet() :
         }
     });
 
+    // BSET Rs, Rd - set bit Rs[2:0] of register Rd to 1
+    root.Add(0x7, 0x1, {
+        "BSET Rs, Rd",
+        2,
+        {1, 0, 0, 0, 0, 0},
+        [](CPU& cpu)
+        {
+            const uint8_t bit = cpu.bH() & 0x7;
+            uint8_t* rd = cpu.reg.Reg8(cpu.bL());
+
+            *rd |= (1 << bit);
+        }
+    });
+
+    // BOR #imm3, Rd - Rd.bit(imm3) |= CCR.C
+    root.Add(0x7, 0x4, {
+        "BOR #xx:3, Rd",
+        2,
+        {1, 0, 0, 0, 0, 0},
+        [](CPU& cpu)
+        {
+            const uint8_t imm = cpu.bH();
+            uint8_t* rd = cpu.reg.Reg8(cpu.bL());
+
+            *rd |= (cpu.reg.flags.C << imm);
+        }
+    });
+
+    // BIXOR #imm3, Rd - Rd.bit(imm3) ^= CCR.C
+    root.Add(0x7, 0x5, {
+        "BIXOR #xx:3, Rd",
+        2,
+        {1, 0, 0, 0, 0, 0},
+        [](CPU& cpu)
+        {
+            const uint8_t imm = cpu.bH();
+            uint8_t* rd = cpu.reg.Reg8(cpu.bL());
+
+            if (cpu.reg.flags.C)
+                *rd ^= (1 << imm);
+        }
+    });
+
+    // BAND #imm3, Rd - Rd.bit(imm3) &= CCR.C
+    root.Add(0x7, 0x6, {
+        "BAND #xx:3, Rd",
+        2,
+        {1, 0, 0, 0, 0, 0},
+        [](CPU& cpu)
+        {
+            const uint8_t imm = cpu.bH();
+            uint8_t* rd = cpu.reg.Reg8(cpu.bL());
+
+            if (!cpu.reg.flags.C)
+                *rd &= ~(1 << imm);
+        }
+    });
+
+    // BST #imm3, Rd - Rd.bit(imm3) = CCR.C
+    root.Add(0x7, 0x8, {
+        "BST #xx:3, Rd",
+        2,
+        {1, 0, 0, 0, 0, 0},
+        [](CPU& cpu)
+        {
+            const uint8_t imm = cpu.bH();
+            uint8_t* rd = cpu.reg.Reg8(cpu.bL());
+
+            if (cpu.reg.flags.C)
+                *rd |= (1 << imm);
+            else
+                *rd &= ~(1 << imm);
+        }
+    });
+
     root.AddSubtable(0x7, 0x9,
         [](const CPU& cpu) { return static_cast<uint32_t>(cpu.a()); },
         [](const CPU& cpu) { return static_cast<uint32_t>(cpu.bH()); },
