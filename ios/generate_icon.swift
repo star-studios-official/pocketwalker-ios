@@ -1,17 +1,14 @@
 #!/usr/bin/env swift
 // generate_icon.swift — Generate a multi-layered PocketWalker app icon
 // Run on macOS: swift generate_icon.swift
-// Requires: macOS with CoreGraphics/SwiftUI
 
 import Foundation
 import CoreGraphics
 import ImageIO
-import UniformTypeIdentifiers
 
 let size = 1024
 let outputPath = "PocketWalker/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
 
-// Create the icon context
 guard let context = CGContext(
     data: nil,
     width: size,
@@ -25,188 +22,94 @@ guard let context = CGContext(
 }
 
 // --- Layer 1: Background gradient (dark green → teal) ---
-let colorSpace = CGColorSpaceCreateDeviceRGB()
 let gradientColors: [CGColor] = [
-    CGColor(red: 0.05, green: 0.15, blue: 0.10, alpha: 1.0),  // dark forest
-    CGColor(red: 0.10, green: 0.30, blue: 0.25, alpha: 1.0),  // teal
+    CGColor(red: 0.05, green: 0.15, blue: 0.10, alpha: 1.0),
+    CGColor(red: 0.10, green: 0.30, blue: 0.25, alpha: 1.0),
 ]
 let locations: [CGFloat] = [0.0, 1.0]
 if let gradient = CGGradient(
-    colorsSpace: colorSpace,
+    colorsSpace: CGColorSpaceCreateDeviceRGB(),
     colors: gradientColors as CFArray,
     locations: locations
 ) {
-    context.drawLinearGradient(
-        gradient,
-        start: CGPoint(x: 0, y: 0),
-        end: CGPoint(x: 0, y: CGFloat(size)),
-        options: []
-    )
+    context.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: CGFloat(size)), options: [])
 }
 
-// --- Layer 2: PokéWalker silhouette (circle with screen cutout) ---
-// Outer circle (the walker body)
-let walkerCenter = CGPoint(x: 512, y: 512)
-let walkerRadius: CGFloat = 380
-
-// Draw walker body (dark gray)
+// --- Layer 2: PokéWalker body (dark circle) ---
+let cx: CGFloat = 512, cy: CGFloat = 512, r: CGFloat = 380
 context.setFillColor(CGColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1.0))
-context.fillEllipse(in: CGRect(
-    x: walkerCenter.x - walkerRadius,
-    y: walkerCenter.y - walkerRadius,
-    width: walkerRadius * 2,
-    height: walkerRadius * 2
-))
+context.fillEllipse(in: CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2))
 
-// --- Layer 3: LCD screen (green-tinted) ---
-let screenCenter = CGPoint(x: 512, y: 420)
-let screenWidth: CGFloat = 320
-let screenHeight: CGFloat = 220
-
-// Screen bezel
-let bezelRect = CGRect(
-    x: screenCenter.x - screenWidth/2 - 16,
-    y: screenCenter.y - screenHeight/2 - 16,
-    width: screenWidth + 32,
-    height: screenHeight + 32
-)
+// --- Layer 3: Screen bezel ---
+let sw: CGFloat = 320, sh: CGFloat = 220, sy: CGFloat = 420
 context.setFillColor(CGColor(red: 0.25, green: 0.25, blue: 0.25, alpha: 1.0))
-context.fill(roundedRect: bezelRect, cornerWidth: 12, cornerHeight: 12)
+context.fill(CGRect(x: cx - sw/2 - 16, y: sy - sh/2 - 16, width: sw + 32, height: sh + 32))
 
-// Screen surface (LCD green)
-let screenRect = CGRect(
-    x: screenCenter.x - screenWidth/2,
-    y: screenCenter.y - screenHeight/2,
-    width: screenWidth,
-    height: screenHeight
-)
+// --- Layer 4: LCD screen (green) ---
 context.setFillColor(CGColor(red: 0.75, green: 0.85, blue: 0.60, alpha: 1.0))
-context.fill(roundedRect: screenRect, cornerWidth: 4, cornerHeight: 4)
+context.fill(CGRect(x: cx - sw/2, y: sy - sh/2, width: sw, height: sh))
 
-// --- Layer 4: Pixel art on screen (simple Pokéball outline) ---
-let pokeCenter = CGPoint(x: 512, y: 420)
-let pokeRadius: CGFloat = 60
-
-// Pokéball circle
+// --- Layer 5: Pokéball on screen ---
+let pr: CGFloat = 60
 context.setStrokeColor(CGColor(red: 0.10, green: 0.20, blue: 0.05, alpha: 1.0))
 context.setLineWidth(4.0)
-context.strokeEllipse(in: CGRect(
-    x: pokeCenter.x - pokeRadius,
-    y: pokeCenter.y - pokeRadius,
-    width: pokeRadius * 2,
-    height: pokeRadius * 2
-))
-
+context.strokeEllipse(in: CGRect(x: cx - pr, y: sy - pr, width: pr * 2, height: pr * 2))
 // Horizontal line
-context.move(to: CGPoint(x: pokeCenter.x - pokeRadius, y: pokeCenter.y))
-context.addLine(to: CGPoint(x: pokeCenter.x + pokeRadius, y: pokeCenter.y))
+context.move(to: CGPoint(x: cx - pr, y: sy))
+context.addLine(to: CGPoint(x: cx + pr, y: sy))
 context.strokePath()
-
 // Center dot
 context.setFillColor(CGColor(red: 0.10, green: 0.20, blue: 0.05, alpha: 1.0))
-context.fillEllipse(in: CGRect(
-    x: pokeCenter.x - 10,
-    y: pokeCenter.y - 10,
-    width: 20,
-    height: 20
-))
+context.fillEllipse(in: CGRect(x: cx - 10, y: sy - 10, width: 20, height: 20))
 
-// --- Layer 5: Three buttons at bottom ---
-let buttonY: CGFloat = 620
-let buttonRadius: CGFloat = 40
+// --- Layer 6: Three buttons ---
+let by: CGFloat = 620, br: CGFloat = 40
+let buttonColor = CGColor(red: 0.35, green: 0.35, blue: 0.35, alpha: 1.0)
+let centerBtnColor = CGColor(red: 0.50, green: 0.50, blue: 0.50, alpha: 1.0)
+for (bx, clr) in [(CGFloat(380), buttonColor), (cx, centerBtnColor), (CGFloat(644), buttonColor)] {
+    context.setFillColor(clr)
+    context.fillEllipse(in: CGRect(x: bx - br, y: by - br, width: br * 2, height: br * 2))
+}
 
-// Left button
-context.setFillColor(CGColor(red: 0.35, green: 0.35, blue: 0.35, alpha: 1.0))
-context.fillEllipse(in: CGRect(
-    x: 380 - buttonRadius,
-    y: buttonY - buttonRadius,
-    width: buttonRadius * 2,
-    height: buttonRadius * 2
-))
-
-// Center button
-context.setFillColor(CGColor(red: 0.50, green: 0.50, blue: 0.50, alpha: 1.0))
-context.fillEllipse(in: CGRect(
-    x: 512 - buttonRadius,
-    y: buttonY - buttonRadius,
-    width: buttonRadius * 2,
-    height: buttonRadius * 2
-))
-
-// Right button
-context.setFillColor(CGColor(red: 0.35, green: 0.35, blue: 0.35, alpha: 1.0))
-context.fillEllipse(in: CGRect(
-    x: 644 - buttonRadius,
-    y: buttonY - buttonRadius,
-    width: buttonRadius * 2,
-    height: buttonRadius * 2
-))
-
-// --- Layer 6: Highlight/shine effect ---
+// --- Layer 7: Shine highlight ---
 context.setFillColor(CGColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 0.08))
-context.fillEllipse(in: CGRect(
-    x: walkerCenter.x - walkerRadius + 40,
-    y: walkerCenter.y - walkerRadius + 40,
-    width: walkerRadius * 1.2,
-    height: walkerRadius * 0.8
-))
+context.fillEllipse(in: CGRect(x: cx - r + 40, y: cy - r + 40, width: r * 1.2, height: r * 0.8))
 
-// --- Layer 7: "PW" text at top ---
-// Simple pixel-style text
-let textY: CGFloat = 780
+// --- Layer 8: "PW" pixel text ---
+let px: CGFloat = 16
+let tx: CGFloat = 460, ty: CGFloat = 780
 context.setFillColor(CGColor(red: 0.9, green: 0.95, blue: 0.85, alpha: 1.0))
-context.setFont(CTFontCreateWithName("Courier-Bold" as CFString, 80, nil))
 
-// Render "PW" as simple rectangles (pixel font)
-let pixelSize: CGFloat = 16
-let letterSpacing: CGFloat = pixelSize * 6
-
-// P
-let pStartX: CGFloat = 460
-let pLines: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [
-    (pStartX, textY, pixelSize, pixelSize * 5),
-    (pStartX, textY, pixelSize * 2, pixelSize),
-    (pStartX + pixelSize * 2, textY, pixelSize, pixelSize * 2),
-    (pStartX + pixelSize, textY + pixelSize * 2, pixelSize * 2, pixelSize),
+// P shape (pixel rectangles)
+let pRects: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [
+    (tx, ty, px, px * 5),
+    (tx, ty, px * 3, px),
+    (tx + px * 2, ty, px, px * 2),
+    (tx + px, ty + px * 2, px * 2, px),
 ]
-
-// W
-let wStartX: CGFloat = 540
-let wLines: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [
-    (wStartX, textY, pixelSize, pixelSize * 5),
-    (wStartX + pixelSize * 3, textY, pixelSize, pixelSize * 5),
-    (wStartX + pixelSize, textY + pixelSize * 4, pixelSize, pixelSize),
-    (wStartX + pixelSize * 2, textY + pixelSize * 4, pixelSize, pixelSize),
+// W shape
+let wx: CGFloat = 540
+let wRects: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [
+    (wx, ty, px, px * 5),
+    (wx + px * 3, ty, px, px * 5),
+    (wx + px, ty + px * 4, px, px),
+    (wx + px * 2, ty + px * 4, px, px),
 ]
-
-context.setFillColor(CGColor(red: 0.9, green: 0.95, blue: 0.85, alpha: 1.0))
-for (x, y, w, h) in pLines + wLines {
+for (x, y, w, h) in pRects + wRects {
     context.fill(CGRect(x: x, y: y, width: w, height: h))
 }
 
 // --- Save ---
-guard let image = context.makeImage() else {
-    fatalError("Failed to create image")
-}
+guard let image = context.makeImage() else { fatalError("Failed to create image") }
 
-// Create output directory
 let fm = FileManager.default
 let outputDir = (outputPath as NSString).deletingLastPathComponent
 try? fm.createDirectory(atPath: outputDir, withIntermediateDirectories: true)
 
-// Write PNG
-guard let destination = CGImageDestinationCreateWithURL(
-    URL(fileURLWithPath: outputPath) as CFURL,
-    "public.png" as CFString,
-    1,
-    nil
-) else {
-    fatalError("Failed to create image destination")
-}
-CGImageDestinationAddImage(destination, image, nil)
-guard CGImageDestinationFinalize(destination) else {
-    fatalError("Failed to write image")
-}
+guard let dest = CGImageDestinationCreateWithURL(
+    URL(fileURLWithPath: outputPath) as CFURL, "public.png" as CFString, 1, nil
+) else { fatalError("Failed to create destination") }
+CGImageDestinationAddImage(dest, image, nil)
+guard CGImageDestinationFinalize(dest) else { fatalError("Failed to write") }
 
-print("✅ App icon generated at: \(outputPath)")
-print("   Size: \(size)x\(size) PNG")
+print("✅ App icon generated: \(outputPath) (\(size)x\(size))")
