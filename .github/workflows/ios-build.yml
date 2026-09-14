@@ -29,133 +29,189 @@ jobs:
           restore-keys: |
             ios-${{ matrix.variant }}-
 
-      - name: Build core library
+      - name: Configure CMake
         run: |
           cd pocketwalker/ios
-          mkdir -p build-ios
-          cmake -S . -B build-ios \
+          cmake -S . -B build-ios -G Xcode \
             -DCMAKE_SYSTEM_NAME=iOS \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
-            -DCMAKE_OSX_ARCHITECTURES="arm64" \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH=YES
-          
+
+      - name: Build
+        run: |
+          cd pocketwalker/ios
           cmake --build build-ios --config Release -j$(sysctl -n hw.ncpu)
 
-      - name: Create Xcode project
+      - name: Create unsigned IPA
         run: |
           cd pocketwalker/ios
-          
-          # Create a simple Xcode project structure
-          mkdir -p PocketWalker.xcodeproj
-          
-          # Generate project.pbxproj (simplified - in practice you'd use xcodegen or tuist)
-          cat > PocketWalker.xcodeproj/project.pbxproj << 'PBXPROJ'
-          // This is a placeholder - use xcodegen to generate the actual project
-          // For now, we'll use the CMake-built static library
-          PBXPROJ
 
-      - name: Build iOS app
-        run: |
-          cd pocketwalker/ios
-          
-          # Use xcodebuild to build the app
-          # Note: This requires the Xcode project to be properly configured
-          # For a real build, you'd use xcodegen or create the project manually
-          
-          echo "Building PocketWalker iOS app..."
-          echo "Core library built successfully at: build-ios/"
-          echo "To complete the build, configure the Xcode project with:"
-          echo "  - Link pocketwalker_capi static library"
-          echo "  - Add PocketWalker sources"
-          echo "  - Set deployment target to iOS 16.0"
-          echo "  - Enable HealthKit capability"
+          # Find the .app bundle (CMake MACOSX_BUNDLE produces it)
+          APP_PATH=$(find build-ios -name "PocketWalker.app" -type d | head -1)
 
-      - name: Package as IPA (unsigned)
-        run: |
-          cd pocketwalker/ios
-          
-          # Create app bundle structure
-          APP_NAME="PocketWalker"
-          APP_PATH="artifacts/Payload/${APP_NAME}.app"
-          
-          mkdir -p "${APP_PATH}"
-          
-          # Copy built libraries
-          cp build-ios/libpocketwalker_core.a "${APP_PATH}/" || true
-          cp build-ios/libpocketwalker_capi.a "${APP_PATH}/" || true
-          
-          # Create Info.plist
-          cat > "${APP_PATH}/Info.plist" << 'INFOPLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleDevelopmentRegion</key>
-              <string>en</string>
-              <key>CFBundleDisplayName</key>
-              <string>PocketWalker</string>
-              <key>CFBundleExecutable</key>
-              <string>${APP_NAME}</string>
-              <key>CFBundleIdentifier</key>
-              <string>com.pocketwalker.PocketWalker</string>
-              <key>CFBundleInfoDictionaryVersion</key>
-              <string>6.0</string>
-              <key>CFBundleName</key>
-              <string>PocketWalker</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>CFBundleShortVersionString</key>
-              <string>1.0.0</string>
-              <key>CFBundleVersion</key>
-              <string>1</string>
-              <key>LSRequiresIPhoneOS</key>
-              <true/>
-              <key>UILaunchScreen</key>
-              <dict/>
-              <key>UISupportedInterfaceOrientations</key>
-              <array>
-                  <string>UIInterfaceOrientationPortrait</string>
-              </array>
-              <key>NSHealthShareUsageDescription</key>
-              <string>PocketWalker reads your step count to sync with the PokéWalker emulator.</string>
-              <key>UIFileSharingEnabled</key>
-              <true/>
-              <key>LSSupportsOpeningDocumentsInPlace</key>
-              <true/>
-          </dict>
-          </plist>
-          INFOPLIST
-          
-          # Create entitlements
-          cat > "${APP_PATH}/${APP_NAME}.entitlements" << 'ENTITLEMENTS'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>com.apple.developer.healthkit</key>
-              <true/>
-          </dict>
-          </plist>
-          ENTITLEMENTS
-          
-          # Create IPA
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: PocketWalker.app not found"
+            echo "Build output:"
+            find build-ios -name "*.app" -type d 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "Found app bundle: $APP_PATH"
+
+          # Fix bundle identifier in Info.plist
+          BUNDLE_ID="com.pocketwalker.PocketWalker"
+          plutil -replace CFBundleIdentifier -string "$BUNDLE_ID" "$APP_PATH/Info.plist"
+          plutil -replace CFBundleExecutable -string "PocketWalker" "$APP_PATH/Info.plist"
+          plutil -replace CFBundleName -string "PocketWalker" "$APP_PATH/Info.plist"
+
+          echo "Updated Info.plist:"
+          plutil -p "$APP_PATH/Info.plist" | grep -E "(CFBundleIdentifier|CFBundleExecutable|CFBundleName)"
+
+          # Compile asset catalog to generate app icons
+          echo "Compiling asset catalog..."
+          xcrun actool PocketWalker/Assets.xcassets \
+            --compile "$APP_PATH" \
+            --platform iphoneos \
+            --minimum-deployment-target 16.0 \
+            --app-icon AppIcon \
+            --output-partial-info-plist /tmp/partial-info.plist \
+            --compress-pngs || true
+
+          if [ -f "$APP_PATH/Assets.car" ]; then
+            echo "Assets.car created successfully"
+          else
+            echo "Warning: Assets.car not found, continuing..."
+          fi
+
+          # Copy entitlements into the bundle
+          if [ -f "PocketWalker/PocketWalker.entitlements" ]; then
+            cp "PocketWalker/PocketWalker.entitlements" "$APP_PATH/"
+            echo "Copied entitlements to app bundle"
+          fi
+
+          # Embed entitlements into _CodeSignature/ for sideloading tools
+          if [ -f "PocketWalker/PocketWalker.entitlements" ]; then
+            mkdir -p "$APP_PATH/_CodeSignature"
+            plutil -convert binary1 \
+              -o "$APP_PATH/_CodeSignature/entitlements.plist" \
+              "PocketWalker/PocketWalker.entitlements"
+            echo "Embedded entitlements in _CodeSignature/entitlements.plist"
+          fi
+
+          # Create IPA directory structure
+          mkdir -p artifacts/Payload
+
+          # Copy app bundle to Payload
+          cp -r "$APP_PATH" artifacts/Payload/
+
+          # Embed entitlements into the Mach-O binary using ldid
+          # This is needed for sideloading tools (AltStore, SideStore, etc.)
+          brew install ldid || true
+          if command -v ldid >/dev/null 2>&1; then
+            ldid -S"PocketWalker/PocketWalker.entitlements" \
+                 -I"com.pocketwalker.PocketWalker" \
+                 "artifacts/Payload/PocketWalker.app/PocketWalker"
+            echo "=== Entitlements embedded in Mach-O binary ==="
+            ldid -e "artifacts/Payload/PocketWalker.app/PocketWalker"
+          else
+            echo "Warning: ldid not available, skipping entitlement embedding"
+          fi
+
+          # Verify final bundle structure
+          echo "App bundle contents:"
+          ls -la "artifacts/Payload/PocketWalker.app/" | head -30
+
+          echo "Final bundle identifier:"
+          plutil -extract CFBundleIdentifier raw "artifacts/Payload/PocketWalker.app/Info.plist"
+
+          # Create the IPA
           cd artifacts
-          zip -r ../${APP_NAME}.ipa Payload
+          zip -r ../PocketWalker.ipa Payload
           cd ..
-          
-          echo "IPA created at: ${APP_NAME}.ipa"
-          ls -lh ${APP_NAME}.ipa
+
+          echo "IPA created:"
+          ls -lh PocketWalker.ipa
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: ios-${{ matrix.variant }}-ipa
-          path: PocketWalker.ipa
+          path: pocketwalker/ios/PocketWalker.ipa
           retention-days: 30
 
-      - name: Upload build artifacts
+      - name: Upload debug symbols
         uses: actions/upload-artifact@v4
         with:
-          name: ios-${{ matrix.variant }}-build
-          path: pocketwalker/ios/build-ios/
+          name: ios-${{ matrix.variant }}-dsyms
+          path: pocketwalker/ios/build-ios/**/*.dSYM
           retention-days: 7
+
+  # Manual job: sign the unsigned IPA with your certificate + provisioning profile
+  # Requires these repo secrets:
+  #   IOS_CERT_P12_BASE64         - base64 of the .p12 (empty password)
+  #   IOS_MOBILEPROVISION_BASE64  - base64 of the .mobileprovision
+  # Trigger with: Actions -> ios-build -> Run workflow
+  sign-ipa:
+    name: Sign IPA with certificate
+    runs-on: ubuntu-latest
+    needs: ios-build
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Install ldid
+        run: brew install ldid
+
+      - name: Download unsigned IPA
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-standard-ipa
+          path: unsigned
+
+      - name: Decode certificate and provisioning profile
+        env:
+          IOS_CERT_P12_BASE64: ${{ secrets.IOS_CERT_P12_BASE64 }}
+          IOS_MOBILEPROVISION_BASE64: ${{ secrets.IOS_MOBILEPROVISION_BASE64 }}
+        run: |
+          if [ -z "$IOS_CERT_P12_BASE64" ] || [ -z "$IOS_MOBILEPROVISION_BASE64" ]; then
+            echo "ERROR: set IOS_CERT_P12_BASE64 and IOS_MOBILEPROVISION_BASE64 secrets"
+            exit 1
+          fi
+          echo "$IOS_CERT_P12_BASE64" | base64 --decode > cert.p12
+          echo "$IOS_MOBILEPROVISION_BASE64" | base64 --decode > embedded.mobileprovision
+
+      - name: Extract certificate and key
+        run: |
+          openssl pkcs12 -in cert.p12 -nodes -clcerts -passin pass: -out cert.pem
+          openssl pkcs12 -in cert.p12 -nodes -nocerts -passin pass: -out key.pem
+
+      - name: Sign IPA
+        run: |
+          mkdir -p Payload
+          unzip -q unsigned/PocketWalker.ipa -d .
+          ldid -S"pocketwalker/ios/PocketWalker/PocketWalker.entitlements" \
+               -I"com.pocketwalker.PocketWalker" \
+               -K"key.pem" \
+               -C"cert.pem" \
+               -M"embedded.mobileprovision" \
+               "Payload/PocketWalker.app/PocketWalker"
+          cp embedded.mobileprovision "Payload/PocketWalker.app/embedded.mobileprovision"
+          zip -q -r PocketWalker-signed.ipa Payload
+
+      - name: Verify signed IPA
+        run: |
+          echo "=== Entitlements in signed binary ==="
+          ldid -e "Payload/PocketWalker.app/PocketWalker"
+          unzip -l PocketWalker-signed.ipa | grep -q "embedded.mobileprovision" \
+            && echo "OK: provisioning profile embedded" \
+            || { echo "FAIL: no embedded.mobileprovision"; exit 1; }
+
+      - name: Upload signed IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-signed-ipa
+          path: PocketWalker-signed.ipa
