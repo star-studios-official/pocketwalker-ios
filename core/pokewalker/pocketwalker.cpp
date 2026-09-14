@@ -127,12 +127,12 @@ SSD1854DrawInfo* PocketWalker::GetDrawInfo()
 
 uint8_t PocketWalker::ReadRam(uint16_t address) const
 {
-    return this->soc->memory->Read(address);
+    return this->soc->memory->Read8(address);
 }
 
 void PocketWalker::WriteRam(uint16_t address, uint8_t value) const
 {
-    this->soc->memory->Write(address, value);
+    this->soc->memory->Write8(address, value);
 }
 
 void PocketWalker::PressButton(ButtonType button) const
