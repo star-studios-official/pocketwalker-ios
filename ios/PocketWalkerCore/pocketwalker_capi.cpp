@@ -67,7 +67,8 @@ void pw_set_paused(PWEmulator* emu, bool paused) {
 void pw_get_lcd(PWEmulator* emu, uint8_t* buffer) {
     if (!emu || !buffer) return;
     auto* info = emu->walker->GetDrawInfo();
-    std::memcpy(buffer, info->vram.buffer.data(), PW_LCD_MEM_SIZE);
+    void* src = info->vram.Ptr(0);
+    std::memcpy(buffer, src, PW_LCD_MEM_SIZE);
 }
 
 uint8_t pw_get_contrast(PWEmulator* emu) {
